@@ -15,16 +15,29 @@ enum DataError: Error {
 }
 
 class NetworkManager {
-    func request<T: Codable>(url: String, token: String = "") async throws -> T {
+    func getToken() -> String? {
+
+        guard let data = KeychainManager.get(service: "asile.com", account: "asile-app") else {
+            print("failed to read token.")
+            return nil
+        }
+        
+        let password = String(decoding: data, as: UTF8.self)
+        return password
+    }
+    
+    func request<T: Codable>(url: String) async throws -> T {
         guard let url = URL(string: url) else {
             throw DataError.invalidURL
         }
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        if let token = getToken() {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         
-        
-        let (data, response) = try await URLSession.shared.data(from: url)
+        let (data, response) = try await URLSession.shared.data(for: request)
         
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw DataError.invalidResponse
